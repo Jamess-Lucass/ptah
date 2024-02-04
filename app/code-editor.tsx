@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSearchParams } from "next/navigation";
 
 const language_versions: Record<string, string> = {
   javascript: "18.15.0",
@@ -73,10 +74,15 @@ type PrisonAPIResponse = {
 };
 
 export function CodeEditor({ ...props }: EditorProps) {
+  const searchParams = useSearchParams();
   const { resolvedTheme } = useTheme();
-  const [code, setCode] = useState<string>(code_snippets["typescript"]);
+  const [code, setCode] = useState<string>(
+    atob(searchParams.get("code") ?? "") || code_snippets["typescript"]
+  );
   const [open, setOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("typescript");
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    searchParams.get("language") || "typescript"
+  );
   const [output, setOutput] = useState<string[]>([
     "Click 'Run' to view the output.",
   ]);
@@ -132,6 +138,16 @@ export function CodeEditor({ ...props }: EditorProps) {
 
     setOutput(json.run.output.split("\n"));
   };
+
+  useEffect(() => {
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}?language=${selectedLanguage}&code=${btoa(
+        code
+      )}`
+    );
+  }, [code, selectedLanguage]);
 
   return (
     <>
