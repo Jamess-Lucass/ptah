@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Editor, EditorProps } from "@monaco-editor/react";
+import { Editor, EditorProps, useMonaco } from "@monaco-editor/react";
 import { CaretSortIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
 import {
   Command,
@@ -16,14 +16,14 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { useEffect, useState } from "react";
+import { createRef, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeToggle } from "../../src/components/theme-toggle";
 import {
   Select,
   SelectContent,
@@ -32,10 +32,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSearchParams } from "next/navigation";
+import { MonacoLanguageClient, initServices } from "monaco-languageclient";
+import {
+  WebSocketMessageReader,
+  WebSocketMessageWriter,
+  listen,
+  toSocket,
+} from "vscode-ws-jsonrpc";
+import * as monaco from "monaco-editor";
+import * as vscode from "vscode";
+import {
+  CloseAction,
+  ErrorAction,
+  MessageTransports,
+} from "vscode-languageclient";
+import { MessageConnection } from "vscode-jsonrpc";
+import {
+  RegisteredFileSystemProvider,
+  registerFileSystemOverlay,
+  RegisteredMemoryFile,
+} from "@codingame/monaco-vscode-files-service-override";
+import { createConfiguredEditor, createModelReference } from "vscode/monaco";
 
 const language_versions: Record<string, string> = {
   javascript: "18.15.0",
   typescript: "5.0.3",
+  go: "1.16.2",
 };
 
 const languages = [
@@ -46,6 +68,10 @@ const languages = [
   {
     value: "typescript",
     label: "TypeScript",
+  },
+  {
+    value: "go",
+    label: "Go",
   },
 ];
 
@@ -73,6 +99,59 @@ type PrisonAPIResponse = {
   };
 };
 
+const createLanguageClient = (
+  transports: MessageTransports
+): MonacoLanguageClient => {
+  return new MonacoLanguageClient({
+    name: "Go LSP",
+    clientOptions: {
+      documentSelector: ["go"],
+      errorHandler: {
+        error: () => ({ action: ErrorAction.Continue }),
+        closed: () => ({ action: CloseAction.DoNotRestart }),
+      },
+      workspaceFolder: {
+        uri: monaco.Uri.parse("/workspace"),
+        name: "workspace",
+        index: 0,
+      },
+    },
+    connectionProvider: {
+      get: () => {
+        return Promise.resolve(transports);
+      },
+    },
+  });
+};
+
+export const createJsonEditor = async (config: {
+  htmlElement: HTMLElement;
+  content: string;
+}) => {
+  // create the model
+  const uri = vscode.Uri.parse("/workspace/main.go");
+  const modelRef = await createModelReference(uri, config.content);
+  modelRef.object.setLanguageId("go");
+
+  // create monaco editor
+  const editor = createConfiguredEditor(config.htmlElement, {
+    model: modelRef.object.textEditorModel,
+    glyphMargin: true,
+    lightbulb: {
+      enabled: true,
+    },
+    automaticLayout: true,
+    wordBasedSuggestions: "off",
+  });
+
+  const result = {
+    editor,
+    uri,
+    modelRef,
+  };
+  return Promise.resolve(result);
+};
+
 export function CodeEditor({ ...props }: EditorProps) {
   const searchParams = useSearchParams();
   const { resolvedTheme } = useTheme();
@@ -90,12 +169,130 @@ export function CodeEditor({ ...props }: EditorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
 
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor>();
+  const ref = createRef<HTMLDivElement>();
+  let lspWebSocket: WebSocket;
+
+  const isInit = useRef(false);
+
   useEffect(() => {
-    const orientation = window.localStorage.getItem("orientation");
+    if (isInit.current) return;
+    console.log("mounting");
+    isInit.current = true;
+
+    const currentEditor = editorRef.current;
+
+    if (ref.current != null) {
+      const start = async () => {
+        await initServices();
+        await createJsonEditor({
+          htmlElement: ref.current!,
+          content:
+            'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hello world")\n}',
+        });
+        const webSocket = new WebSocket(
+          "wss://hrc.suggest.hackerrank.com/go?user_id=undefined"
+        );
+        webSocket.onopen = async () => {
+          const socket = toSocket(webSocket);
+          const reader = new WebSocketMessageReader(socket);
+          const writer = new WebSocketMessageWriter(socket);
+          const languageClient = createLanguageClient({
+            reader,
+            writer,
+          });
+          await languageClient.start();
+          reader.onClose(() => languageClient.stop());
+        };
+
+        lspWebSocket = webSocket;
+      };
+
+      start();
+
+      return () => {
+        currentEditor?.dispose();
+      };
+    }
+
+    window.onbeforeunload = () => {
+      // On page reload/exit, close web socket connection
+      lspWebSocket?.close();
+    };
+    return () => {
+      // On component unmount, close web socket connection
+      lspWebSocket?.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    const orientation =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("orientation")
+        : "";
     if (orientation) {
       setOrientation(orientation === "vertical" ? "vertical" : "horizontal");
     }
+
+    //
+    // init
+    //
+
+    // async function init() {
+    //   setTimeout(async () => {
+    //     console.log("initializing");
+    //     await initServices();
+
+    //     const fileSystemProvider = new RegisteredFileSystemProvider(false);
+    //     fileSystemProvider.registerFile(
+    //       new RegisteredMemoryFile(
+    //         vscode.Uri.file("/workspace/main.go"),
+    //         'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hello world")\n}'
+    //       )
+    //     );
+    //     registerFileSystemOverlay(1, fileSystemProvider);
+
+    //     const modelRef = await createModelReference(
+    //       monaco.Uri.file("/workspace/main.go")
+    //     );
+    //     modelRef.object.setLanguageId("go");
+
+    //     console.log("configuring editor");
+    //     createConfiguredEditor(document.getElementById("container")!, {
+    //       model: modelRef.object.textEditorModel,
+    //       automaticLayout: true,
+    //     });
+
+    //     const webSocket = new WebSocket(
+    //       "wss://hrc.suggest.hackerrank.com/go?user_id=undefined"
+    //     );
+    //     webSocket.onopen = async () => {
+    //       const socket = toSocket(webSocket);
+    //       const reader = new WebSocketMessageReader(socket);
+    //       const writer = new WebSocketMessageWriter(socket);
+    //       const languageClient = createLanguageClient({
+    //         reader,
+    //         writer,
+    //       });
+    //       await languageClient.start();
+    //       reader.onClose(() => languageClient.stop());
+    //     };
+    //   }, 1_000);
+    // }
+
+    // init();
   }, []);
+
+  // client?.languages.registerHoverProvider("go", {
+  //   provideHover(model, position, token) {
+  //     console.log(model.getWordAtPosition(position));
+
+  //     return {
+  //       range: new client.Range(1,1,1,4),
+  //       contents: [{value: "test"}]
+  //     }
+  //   }
+  // })
 
   const handleOnRunClick = async () => {
     setIsError(false);
@@ -242,7 +439,8 @@ export function CodeEditor({ ...props }: EditorProps) {
 
       <ResizablePanelGroup direction={orientation} className="flex-1">
         <ResizablePanel>
-          <Editor
+          <div ref={ref} className="h-full"></div>
+          {/* <Editor
             height="100%"
             theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
             language={selectedLanguage}
@@ -250,7 +448,7 @@ export function CodeEditor({ ...props }: EditorProps) {
             value={code}
             onChange={(value) => setCode(value ?? "")}
             {...props}
-          />
+          /> */}
         </ResizablePanel>
         <ResizableHandle className="w-2 bg-inherit" />
         <ResizablePanel>
