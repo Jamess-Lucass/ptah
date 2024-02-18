@@ -9,9 +9,33 @@ overrides:
   vscode: npm:@codingame/monaco-vscode-api@>=1.85.0 <1.86.0
 
 dependencies:
+  '@codingame/monaco-vscode-configuration-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-editor-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-files-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
   '@codingame/monaco-vscode-go-default-extension':
-    specifier: ^2.1.4
-    version: 2.1.4
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-keybindings-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-textmate-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-theme-defaults-default-extension':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@codingame/monaco-vscode-theme-service-override':
+    specifier: ~1.85.0
+    version: 1.85.6
+  '@monaco-editor/react':
+    specifier: ^4.6.0
+    version: 4.6.0(@codingame/monaco-editor-treemended@1.85.6)(react-dom@18.2.0)(react@18.2.0)
   '@radix-ui/react-dialog':
     specifier: ^1.0.5
     version: 1.0.5(@types/react-dom@18.2.19)(@types/react@18.2.55)(react-dom@18.2.0)(react@18.2.0)
@@ -164,6 +188,20 @@ packages:
       vscode: /@codingame/monaco-vscode-api@1.85.6
     dev: false
 
+  /@codingame/monaco-vscode-configuration-service-override@1.85.6:
+    resolution: {integrity: sha512-/8kQpP7SPIe4IZPRdi0XoJwNfOmwcl1kY3UAFKYVbiXmo1bGD7NYHNZhJXuIuVbIV0yjTygs53nly0LeU9HhOw==}
+    dependencies:
+      '@codingame/monaco-vscode-base-service-override': 1.85.6
+      '@codingame/monaco-vscode-environment-service-override': 1.85.6
+      '@codingame/monaco-vscode-extensions-service-override': 1.85.6
+      '@codingame/monaco-vscode-files-service-override': 1.85.6
+      '@codingame/monaco-vscode-host-service-override': 1.85.6
+      '@codingame/monaco-vscode-layout-service-override': 1.85.6
+      '@codingame/monaco-vscode-quickaccess-service-override': 1.85.6
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      vscode: /@codingame/monaco-vscode-api@1.85.6
+    dev: false
+
   /@codingame/monaco-vscode-editor-service-override@1.85.6:
     resolution: {integrity: sha512-oVlZrob7zvSGyk5YdBtFdSQ0o8vDrbwNs/DXunfaKVai6l5NKvi5aGUzMdyPWOs+GUIQERbWuMfFtaNE73LrtQ==}
     dependencies:
@@ -194,8 +232,8 @@ packages:
       vscode: /@codingame/monaco-vscode-api@1.85.6
     dev: false
 
-  /@codingame/monaco-vscode-go-default-extension@2.1.4:
-    resolution: {integrity: sha512-RxQZXRaj0XpztWiODl3nllz6O7mTTFeEzUq6E+KgIcdWpsAUk4wDSwZUqa3tx1gWBmvBG1hk4IBozxD6twyFcg==}
+  /@codingame/monaco-vscode-go-default-extension@1.85.6:
+    resolution: {integrity: sha512-CSut7GK/phwBx70v36VIOyUTDC7b6M0Ix/c3E7W+7ZlN9l83UrD/OOs4jQE5MswvsksdLu/HrAo/4uCQ2nfZuQ==}
     dependencies:
       vscode: /@codingame/monaco-vscode-api@1.85.6
     dev: false
@@ -203,6 +241,14 @@ packages:
   /@codingame/monaco-vscode-host-service-override@1.85.6:
     resolution: {integrity: sha512-ikmJyG7ev9ERafD7J+y/JtoTPjkibOHxE2OLKxFMMaJsoGQK8dV0DR3geS1xTrEZf8ecCEqC2z4XpnAXr9V9IA==}
     dependencies:
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      vscode: /@codingame/monaco-vscode-api@1.85.6
+    dev: false
+
+  /@codingame/monaco-vscode-keybindings-service-override@1.85.6:
+    resolution: {integrity: sha512-EAktgPm8R3afY5CKB23+ggzDV3lZTLOSTXkKwNkbY+HvVdmyuLheyahPHwxGY/EpjJogDrn8/yZBVTEOgzfY3w==}
+    dependencies:
+      '@codingame/monaco-vscode-files-service-override': 1.85.6
       monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
       vscode: /@codingame/monaco-vscode-api@1.85.6
     dev: false
@@ -232,6 +278,30 @@ packages:
   /@codingame/monaco-vscode-quickaccess-service-override@1.85.6:
     resolution: {integrity: sha512-f9PfAg+pWemwBysCtr/MAUA6iwU6/JFvGDakd7N0Nf9o882ozJt9UOHH8SHerPZk5UdqSJtnl7yJsDbmxbUf2Q==}
     dependencies:
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      vscode: /@codingame/monaco-vscode-api@1.85.6
+    dev: false
+
+  /@codingame/monaco-vscode-textmate-service-override@1.85.6:
+    resolution: {integrity: sha512-v7fJL0nuOFf1Vksuv/KyYbtaUZEVNiNVYZtEKEVIU4k4EabzwbdqmZM7EbL5d3Nm98nuaJIyHNBV9cSmirfOiQ==}
+    dependencies:
+      '@codingame/monaco-vscode-files-service-override': 1.85.6
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      vscode: /@codingame/monaco-vscode-api@1.85.6
+      vscode-oniguruma: 1.7.0
+      vscode-textmate: 9.0.0
+    dev: false
+
+  /@codingame/monaco-vscode-theme-defaults-default-extension@1.85.6:
+    resolution: {integrity: sha512-k8KsrIEKvQNlhoofN62TFtwyCdwuX+nTgX+LsK6GY8Uu5HpmUXyu0eZQFZYZy4D2h3HirPLSbQ02qUfjUwa6hw==}
+    dependencies:
+      vscode: /@codingame/monaco-vscode-api@1.85.6
+    dev: false
+
+  /@codingame/monaco-vscode-theme-service-override@1.85.6:
+    resolution: {integrity: sha512-bFVRVex0eK3VsCL/loLZ8BGE3yqVhkYqDNDJlRIU4jyLA77Z5mz0NESF09wztkh/+TTA5XctBZIqxIe99VftWA==}
+    dependencies:
+      '@codingame/monaco-vscode-files-service-override': 1.85.6
       monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
       vscode: /@codingame/monaco-vscode-api@1.85.6
     dev: false
@@ -563,6 +633,28 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
+
+  /@monaco-editor/loader@1.4.0(@codingame/monaco-editor-treemended@1.85.6):
+    resolution: {integrity: sha512-00ioBig0x642hytVspPl7DbQyaSWRaolYie/UFNjoTdvoKPzo6xrXLhTk9ixgIKcLH5b5vDOjVNiGyY+uDCUlg==}
+    peerDependencies:
+      monaco-editor: npm:@codingame/monaco-editor-treemended@>=1.85.0 <1.86.0
+    dependencies:
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      state-local: 1.0.7
+    dev: false
+
+  /@monaco-editor/react@4.6.0(@codingame/monaco-editor-treemended@1.85.6)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-RFkU9/i7cN2bsq/iTkurMWOEErmYcY6JiQI3Jn+WeR/FGISH8JbHERjpS9oRuSOPvDMJI0Z8nJeKkbOs9sBYQw==}
+    peerDependencies:
+      monaco-editor: npm:@codingame/monaco-editor-treemended@>=1.85.0 <1.86.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      '@monaco-editor/loader': 1.4.0(@codingame/monaco-editor-treemended@1.85.6)
+      monaco-editor: /@codingame/monaco-editor-treemended@1.85.6
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: false
 
   /@next/env@14.1.0:
     resolution: {integrity: sha512-Py8zIo+02ht82brwwhTg36iogzFqGLPXlRGKQw5s+qP/kMNc4MAyDeEwBKDijk6zTIbegEgu8Qy7C1LboslQAw==}
@@ -3175,6 +3267,10 @@ packages:
     resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}
     engines: {node: '>=0.10.0'}
 
+  /state-local@1.0.7:
+    resolution: {integrity: sha512-HTEHMNieakEnoe33shBYcZ7NX83ACUjCu8c40iOGEZsngj9zRnkqS9j1pqQPXwobB0ZcVTk27REb7COQ0UR59w==}
+    dev: false
+
   /streamsearch@1.1.0:
     resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
     engines: {node: '>=10.0.0'}
@@ -3467,6 +3563,14 @@ packages:
 
   /vscode-languageserver-types@3.17.5:
     resolution: {integrity: sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg==}
+    dev: false
+
+  /vscode-oniguruma@1.7.0:
+    resolution: {integrity: sha512-L9WMGRfrjOhgHSdOYgCt/yRMsXzLDJSL7BPrOZt73gU0iWO4mpqzqQzOz5srxqTvMBaR0XZTSrVWo4j55Rc6cA==}
+    dev: false
+
+  /vscode-textmate@9.0.0:
+    resolution: {integrity: sha512-Cl65diFGxz7gpwbav10HqiY/eVYTO1sjQpmRmV991Bj7wAoOAjGQ97PpQcXorDE2Uc4hnGWLY17xme+5t6MlSg==}
     dev: false
 
   /vscode-ws-jsonrpc@3.1.0:

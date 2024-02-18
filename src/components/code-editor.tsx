@@ -13,6 +13,9 @@ import {
   MessageTransports,
 } from "vscode-languageclient";
 import { createConfiguredEditor, createModelReference } from "vscode/monaco";
+import getTextmateServiceOverride from "@codingame/monaco-vscode-textmate-service-override";
+import getThemeServiceOverride from "@codingame/monaco-vscode-theme-service-override";
+import getConfigurationServiceOverride from "@codingame/monaco-vscode-configuration-service-override";
 import "@codingame/monaco-vscode-go-default-extension";
 
 const createLanguageClient = (
@@ -56,6 +59,7 @@ export const createJsonEditor = async (config: {
     lightbulb: {
       enabled: true,
     },
+    language: "go",
     automaticLayout: true,
     wordBasedSuggestions: "off",
   });
@@ -91,7 +95,13 @@ export function CodeEditor({ defaultCode, setEditor }: Props) {
 
     if (ref.current != null) {
       const start = async () => {
-        await initServices();
+        await initServices({
+          userServices: {
+            ...getThemeServiceOverride(),
+            ...getTextmateServiceOverride(),
+          },
+        });
+
         const { editor } = await createJsonEditor({
           htmlElement: ref.current!,
           content: defaultCode,
@@ -100,6 +110,7 @@ export function CodeEditor({ defaultCode, setEditor }: Props) {
         const webSocket = new WebSocket(
           "wss://hrc.suggest.hackerrank.com/go?user_id=undefined"
         );
+
         webSocket.onopen = async () => {
           const socket = toSocket(webSocket);
           const reader = new WebSocketMessageReader(socket);
