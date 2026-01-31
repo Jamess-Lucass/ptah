@@ -83,6 +83,9 @@ func (e *Executor) runContainer(ctx context.Context, lang LanguageConfig, tmpDir
 }
 
 func (e *Executor) ensureImage(ctx context.Context, img string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
 	images, err := e.docker.ImageList(ctx, image.ListOptions{
 		Filters: filters.NewArgs(filters.Arg("reference", img)),
 	})
