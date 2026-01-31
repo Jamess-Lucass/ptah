@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type SSEWriter struct {
@@ -24,7 +25,11 @@ func NewSSEWriter(w http.ResponseWriter) (*SSEWriter, bool) {
 }
 
 func (s *SSEWriter) Send(event, data string) {
-	fmt.Fprintf(s.w, "event: %s\ndata: %s\n\n", event, data)
+	fmt.Fprintf(s.w, "event: %s\n", event)
+	for _, line := range strings.Split(data, "\n") {
+		fmt.Fprintf(s.w, "data: %s\n", line)
+	}
+	fmt.Fprint(s.w, "\n")
 	s.f.Flush()
 }
 

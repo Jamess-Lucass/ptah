@@ -8,6 +8,8 @@ import (
 	"github.com/Jamess-Lucass/ptah/apps/orchestrator/internal/executor"
 )
 
+const MaxCodeSize = 64 * 1024 // 64KB
+
 type ExecuteRequest struct {
 	Language string `json:"language"`
 	Code     string `json:"code"`
@@ -32,7 +34,7 @@ func HandleExecute(exec *executor.Executor) http.HandlerFunc {
 			return
 		}
 
-		if len(req.Code) > 64*1024 {
+		if len(req.Code) > MaxCodeSize {
 			http.Error(w, "code too large (max 64KB)", http.StatusBadRequest)
 			return
 		}

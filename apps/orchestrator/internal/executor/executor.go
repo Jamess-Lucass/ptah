@@ -26,11 +26,6 @@ func New(docker *client.Client) *Executor {
 	return &Executor{docker: docker}
 }
 
-type Output struct {
-	Stream string // "stdout", "stderr", "status", "error"
-	Data   string
-}
-
 type EmitFunc func(stream, data string)
 
 func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string, emit EmitFunc) error {
@@ -47,24 +42,44 @@ func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string
 	}
 	defer cleanup()
 
-	containerID, err := e.createContainer(ctx, lang, tmpDir)
+	// Compile phase (if needed)
+	if len(lang.CompileCommand) > 0 {
+		emit("status", "compiling")
+		exitCode, err := e.runContainer(ctx, lang, tmpDir, lang.CompileCommand, emit)
+		if err != nil {
+			return fmt.Errorf("compile container failed: %w", err)
+		}
+		if exitCode != 0 {
+			emit("status", fmt.Sprintf("compile-failed:%d", exitCode))
+			return nil
+		}
+	}
+
+	// Run phase
+	emit("status", "running")
+	exitCode, err := e.runContainer(ctx, lang, tmpDir, lang.RunCommand, emit)
 	if err != nil {
-		return fmt.Errorf("container create failed: %w", err)
+		return fmt.Errorf("run container failed: %w", err)
+	}
+	emit("status", fmt.Sprintf("exit:%d", exitCode))
+
+	return nil
+}
+
+// runContainer creates, starts, streams, and waits for a container to finish.
+func (e *Executor) runContainer(ctx context.Context, lang LanguageConfig, tmpDir string, cmd []string, emit EmitFunc) (int64, error) {
+	containerID, err := e.createContainer(ctx, lang, tmpDir, cmd)
+	if err != nil {
+		return -1, err
 	}
 	defer e.removeContainer(containerID)
 
 	if err := e.docker.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
-		return fmt.Errorf("container start failed: %w", err)
+		return -1, err
 	}
 
-	emit("status", "running")
-
 	e.streamLogs(ctx, containerID, emit)
-
-	exitCode := e.waitForExit(ctx, containerID)
-	emit("status", fmt.Sprintf("exit:%d", exitCode))
-
-	return nil
+	return e.waitForExit(ctx, containerID), nil
 }
 
 func (e *Executor) ensureImage(ctx context.Context, img string) error {
@@ -103,13 +118,11 @@ func (e *Executor) writeCode(filename, code string) (dir string, cleanup func(),
 	return tmpDir, func() { os.RemoveAll(tmpDir) }, nil
 }
 
-func (e *Executor) createContainer(ctx context.Context, lang LanguageConfig, tmpDir string) (string, error) {
-	codePath := filepath.Join(tmpDir, lang.FileName)
-
+func (e *Executor) createContainer(ctx context.Context, lang LanguageConfig, tmpDir string, cmd []string) (string, error) {
 	cont, err := e.docker.ContainerCreate(ctx,
 		&container.Config{
 			Image:           lang.Image,
-			Cmd:             lang.RunCommand,
+			Cmd:             cmd,
 			WorkingDir:      "/sandbox",
 			NetworkDisabled: true,
 			AttachStdout:    true,
@@ -117,7 +130,7 @@ func (e *Executor) createContainer(ctx context.Context, lang LanguageConfig, tmp
 			Tty:             false,
 		},
 		&container.HostConfig{
-			Binds:       []string{codePath + ":/sandbox/" + lang.FileName + ":ro"},
+			Binds:       []string{tmpDir + ":/sandbox"},
 			NetworkMode: "none",
 			Resources: container.Resources{
 				Memory:     lang.MemoryLimit,
@@ -197,7 +210,6 @@ func (e *Executor) waitForExit(ctx context.Context, containerID string) int64 {
 	case err := <-errCh:
 		if err != nil {
 			slog.Warn("container wait error", "error", err)
-			return -1
 		}
 		return -1
 	case status := <-statusCh:
