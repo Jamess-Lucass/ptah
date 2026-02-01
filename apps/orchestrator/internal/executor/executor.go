@@ -42,24 +42,10 @@ func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string
 	}
 	defer cleanup()
 
-	// Compile phase (if needed)
-	if len(lang.CompileCommand) > 0 {
-		emit("status", "compiling")
-		exitCode, err := e.runContainer(ctx, lang, tmpDir, lang.CompileCommand, emit)
-		if err != nil {
-			return fmt.Errorf("compile container failed: %w", err)
-		}
-		if exitCode != 0 {
-			emit("status", fmt.Sprintf("compile-failed:%d", exitCode))
-			return nil
-		}
-	}
-
-	// Run phase
 	emit("status", "running")
 	exitCode, err := e.runContainer(ctx, lang, tmpDir, lang.RunCommand, emit)
 	if err != nil {
-		return fmt.Errorf("run container failed: %w", err)
+		return fmt.Errorf("container failed: %w", err)
 	}
 	emit("status", fmt.Sprintf("exit:%d", exitCode))
 
@@ -124,17 +110,15 @@ func (e *Executor) writeCode(filename, code string) (dir string, cleanup func(),
 func (e *Executor) createContainer(ctx context.Context, lang LanguageConfig, tmpDir string, cmd []string) (string, error) {
 	cont, err := e.docker.ContainerCreate(ctx,
 		&container.Config{
-			Image:           lang.Image,
-			Cmd:             cmd,
-			WorkingDir:      "/sandbox",
-			NetworkDisabled: true,
-			AttachStdout:    true,
-			AttachStderr:    true,
-			Tty:             false,
+			Image:        lang.Image,
+			Cmd:          cmd,
+			WorkingDir:   "/sandbox",
+			AttachStdout: true,
+			AttachStderr: true,
+			Tty:          false,
 		},
 		&container.HostConfig{
-			Binds:       []string{tmpDir + ":/sandbox"},
-			NetworkMode: "none",
+			Binds: []string{tmpDir + ":/sandbox"},
 			Resources: container.Resources{
 				Memory:     lang.MemoryLimit,
 				MemorySwap: lang.MemoryLimit,
