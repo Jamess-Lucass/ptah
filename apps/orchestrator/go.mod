@@ -2,7 +2,10 @@ module github.com/Jamess-Lucass/ptah/apps/orchestrator
 
 go 1.25.3
 
-require github.com/docker/docker v28.5.2+incompatible
+require (
+	github.com/docker/docker v28.5.2+incompatible
+	github.com/google/uuid v1.6.0
+)
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect

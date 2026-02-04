@@ -25,11 +25,19 @@ func NewSSEWriter(w http.ResponseWriter) (*SSEWriter, bool) {
 }
 
 func (s *SSEWriter) Send(event, data string) {
+	s.Build(event, data)
+	s.Flush()
+}
+
+func (s *SSEWriter) Build(event, data string) {
 	fmt.Fprintf(s.w, "event: %s\n", event)
 	for _, line := range strings.Split(data, "\n") {
 		fmt.Fprintf(s.w, "data: %s\n", line)
 	}
 	fmt.Fprint(s.w, "\n")
+}
+
+func (s *SSEWriter) Flush() {
 	s.f.Flush()
 }
 

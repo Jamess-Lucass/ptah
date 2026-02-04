@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Jamess-Lucass/ptah/apps/orchestrator/internal/job"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -26,15 +27,17 @@ func New(docker *client.Client) *Executor {
 	return &Executor{docker: docker}
 }
 
-type EmitFunc func(stream, data string)
-
-func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string, emit EmitFunc) error {
+func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string, emit job.OutputFunc) error {
 	ctx, cancel := context.WithTimeout(ctx, lang.Timeout)
 	defer cancel()
+
+	slog.Info("checking image")
 
 	if err := e.ensureImage(ctx, lang.Image); err != nil {
 		return fmt.Errorf("image pull failed: %w", err)
 	}
+
+	slog.Info("starting execution", "language", lang.Image)
 
 	tmpDir, cleanup, err := e.writeCode(lang.FileName, code)
 	if err != nil {
@@ -53,17 +56,20 @@ func (e *Executor) Execute(ctx context.Context, lang LanguageConfig, code string
 }
 
 // runContainer creates, starts, streams, and waits for a container to finish.
-func (e *Executor) runContainer(ctx context.Context, lang LanguageConfig, tmpDir string, cmd []string, emit EmitFunc) (int64, error) {
+func (e *Executor) runContainer(ctx context.Context, lang LanguageConfig, tmpDir string, cmd []string, emit job.OutputFunc) (int64, error) {
+	slog.Info("creating container", "image", lang.Image)
 	containerID, err := e.createContainer(ctx, lang, tmpDir, cmd)
 	if err != nil {
 		return -1, err
 	}
 	defer e.removeContainer(containerID)
 
+	slog.Info("starting container", "image", lang.Image)
 	if err := e.docker.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
 		return -1, err
 	}
 
+	slog.Info("tailing container logs", "image", lang.Image)
 	e.streamLogs(ctx, containerID, emit)
 	return e.waitForExit(ctx, containerID), nil
 }
@@ -72,23 +78,29 @@ func (e *Executor) ensureImage(ctx context.Context, img string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
+	slog.Info("getting images")
+
 	images, err := e.docker.ImageList(ctx, image.ListOptions{
 		Filters: filters.NewArgs(filters.Arg("reference", img)),
 	})
 	if err != nil {
+		slog.Error("image list failed", "error", err)
 		return err
 	}
 	if len(images) > 0 {
+		slog.Info("image found locally", "image", img)
 		return nil
 	}
 
 	slog.Info("pulling image", "image", img)
 	r, err := e.docker.ImagePull(ctx, img, image.PullOptions{})
 	if err != nil {
+		slog.Error("image pull failed", "error", err)
 		return err
 	}
 	defer r.Close()
 	io.Copy(io.Discard, r)
+
 	return nil
 }
 
@@ -121,9 +133,15 @@ func (e *Executor) createContainer(ctx context.Context, lang LanguageConfig, tmp
 			Binds: []string{tmpDir + ":/sandbox"},
 			Resources: container.Resources{
 				Memory:     lang.MemoryLimit,
-				MemorySwap: lang.MemoryLimit,
+				MemorySwap: lang.MemoryLimit, // Prevent swap usage
 				NanoCPUs:   lang.CPULimit,
+				PidsLimit:  &[]int64{256}[0], // Limit process count (fork bomb protection)
 			},
+			// Security options
+			SecurityOpt: []string{
+				"no-new-privileges:true", // Prevent privilege escalation
+			},
+			CapDrop:    []string{"ALL"}, // Drop all Linux capabilities
 			AutoRemove: false,
 		},
 		nil,
@@ -146,7 +164,7 @@ func (e *Executor) removeContainer(id string) {
 	}
 }
 
-func (e *Executor) streamLogs(ctx context.Context, containerID string, emit EmitFunc) {
+func (e *Executor) streamLogs(ctx context.Context, containerID string, emit job.OutputFunc) {
 	logs, err := e.docker.ContainerLogs(ctx, containerID, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -168,7 +186,7 @@ func (e *Executor) streamLogs(ctx context.Context, containerID string, emit Emit
 		stdcopy.StdCopy(stdoutW, stderrW, logs)
 	}()
 
-	var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
 	wg.Add(2)
 
 	go func() {
